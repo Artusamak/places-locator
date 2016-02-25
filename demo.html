@@ -4,6 +4,7 @@
   <meta charset=utf-8 />
   <title>Drupal events map</title>
   <script src='https://api.tiles.mapbox.com/mapbox.js/v2.3.0/mapbox.js'></script>
+  <script src='https://code.jquery.com/jquery-2.2.1.min.js'></script>
   <link href='https://api.tiles.mapbox.com/mapbox.js/v2.3.0/mapbox.css' rel='stylesheet' />
   <style>
     body {
@@ -146,6 +147,7 @@
 
 <script>
   L.mapbox.accessToken = 'pk.eyJ1IjoiYXJ0dXNhbWFrIiwiYSI6ImNpbDIzZ2xrZjNhaHB1eW0zMnA0azlkcmoifQ.8vXACKX4UDylXqN6g8nidg';
+
   // Here we don't use the second argument to map, since that would automatically
   // load in non-clustered markers from the layer. Instead we add just the
   // backing tileLayer, and then use the featureLayer only for its data.
@@ -272,11 +274,14 @@
     var popup = '<h3>' + prop.event_name + '</h3><div>' + prop.date;
     var listing = listings.appendChild(document.createElement('div'));
     listing.className = 'item';
+
+    // Build the link showing the marker and popup.
     var link = listing.appendChild(document.createElement('a'));
     link.href = '#';
     link.className = 'title';
     link.innerHTML = prop.event_name;
     link.innerHTML += '<br /><small class="quiet">' + prop.date + '</small>';
+    link.leaflet_id = locale._leaflet_id;
     link.onclick = function() {
       setActive(listing);
       // When a menu item is clicked, animate the map to center
@@ -295,6 +300,45 @@
     popup += '</div>';
     locale.bindPopup(popup);
   });
+
+  function onmove() {
+    // Get the map bounds - the top-left and bottom-right locations.
+    var inBounds = [],
+        bounds = map.getBounds();
+    clusterGroup.eachLayer(function(marker) {
+      // For each marker, consider whether it is currently visible by comparing
+      // with the current map bounds.
+      if (bounds.contains(marker.getLatLng())) {
+        inBounds.push(marker._leaflet_id);
+      }
+    });
+
+    // Hide all the items.
+    var events_div = $('#listings div.item').hide();
+
+    // Find the divs to hide since they are not visible on the map.
+    inBounds.forEach(function(element) {
+      // We want to show again the div associated to the displayed markers.
+      var valid_items = $('#listings div.item').filter(function() {
+        // The marker ids are stored on the links.
+        // Find if they are in the list of markers displayed.
+        // If so, show it, otherwise, leave it hidden.
+        if (inBounds.indexOf($('a.title', this).prop('leaflet_id')) > -1) {
+          return true;
+        }
+        else {
+          return false;
+        }
+      });
+      $(valid_items).show();
+    });
+  }
+  map.on('move', onmove);
+
+  // call onmove off the bat so that the list is populated.
+  // otherwise, there will be no markers listed until the map is moved.
+  onmove();
+
 </script>
 </body>
 </html>
