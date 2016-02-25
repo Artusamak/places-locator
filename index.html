@@ -261,7 +261,7 @@
     }
   ];
 
-  var locations = L.mapbox.featureLayer().addTo(map);
+  var locations = L.mapbox.featureLayer();
   locations.setGeoJSON(geojson);
 
   var clusterGroup = new L.MarkerClusterGroup();
