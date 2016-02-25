@@ -3,8 +3,8 @@
 <head>
   <meta charset=utf-8 />
   <title>Drupal events map</title>
-  <script src='https://api.tiles.mapbox.com/mapbox.js/v2.2.4/mapbox.js'></script>
-  <link href='https://api.tiles.mapbox.com/mapbox.js/v2.2.4/mapbox.css' rel='stylesheet' />
+  <script src='https://api.tiles.mapbox.com/mapbox.js/v2.3.0/mapbox.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox.js/v2.3.0/mapbox.css' rel='stylesheet' />
   <style>
     body {
       color:#404040;
@@ -132,8 +132,8 @@
   </style>
 </head>
 <body>
+
 <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-markercluster/v0.4.0/leaflet.markercluster.js'></script>
-<script src="bower_components/leaflet.markercluster/dist/leaflet.markercluster-src.js"></script>
 <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-markercluster/v0.4.0/MarkerCluster.css' rel='stylesheet' />
 <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-markercluster/v0.4.0/MarkerCluster.Default.css' rel='stylesheet' />
 <div class='sidebar'>
@@ -142,9 +142,16 @@
   </div>
   <div id='listings' class='listings'></div>
 </div>
-<div id='map' class='map pad2'>Map</div>
+<div id='map' class='map'> </div>
+
 <script>
   L.mapbox.accessToken = 'pk.eyJ1IjoiYXJ0dXNhbWFrIiwiYSI6ImNpbDIzZ2xrZjNhaHB1eW0zMnA0azlkcmoifQ.8vXACKX4UDylXqN6g8nidg';
+  // Here we don't use the second argument to map, since that would automatically
+  // load in non-clustered markers from the layer. Instead we add just the
+  // backing tileLayer, and then use the featureLayer only for its data.
+  var map = L.mapbox.map('map')
+      .setView([47.257, -0.033], 6)
+      .addLayer(L.mapbox.tileLayer('artusamak.p8e5e0p1'));
 
   var geojson = [
     {
@@ -155,7 +162,7 @@
           "geometry": {
             "type": "Point",
             "coordinates": [
-              3.87710000000001,
+              3.876,
               43.6113
             ]
           },
@@ -238,58 +245,24 @@
     }
   ];
 
-
-  var map = L.mapbox.map('map', 'artusamak.p8e5e0p1', {
-    // the options here prevent mouse wheel or trackpad scrolling
-    scrollWheelZoom: false
-  });
-
-  var listings = document.getElementById('listings');
   var locations = L.mapbox.featureLayer().addTo(map);
-
   locations.setGeoJSON(geojson);
 
+  var clusterGroup = new L.MarkerClusterGroup();
+  locations.eachLayer(function(layer) {
+    clusterGroup.addLayer(layer);
+  });
+  map.addLayer(clusterGroup);
+
+  var listings = document.getElementById('listings');
   function setActive(el) {
     var siblings = listings.getElementsByTagName('div');
     for (var i = 0; i < siblings.length; i++) {
       siblings[i].className = siblings[i].className
           .replace(/active/, '').replace(/\s\s*$/, '');
     }
-
     el.className += ' active';
   }
-
-  // Since featureLayer is an asynchronous method, we use the `.on('ready'`
-  // call to only use its marker data once we know it is actually loaded.
-//  L.mapbox.featureLayer('artusamak.p8e5e0p1').on('ready', function(e) {
-//  L.mapbox.featureLayer('examples.map-h61e8o8e').on('ready', function(e) {
-//
-//    var markers = L.markerClusterGroup();
-//console.log(locations);
-//    map.addLayer(markers);
-//
-//
-//    // The clusterGroup gets each marker in the group added to it
-//    // once loaded, and then is added to the map
-//    var clusterGroup = new L.MarkerClusterGroup({
-//      // The iconCreateFunction takes the cluster as an argument and returns
-//      // an icon that represents it. We use L.mapbox.marker.icon in this
-//      // example, but you could also use L.icon or L.divIcon.
-//      iconCreateFunction: function(cluster) {
-//        return L.mapbox.marker.icon({
-//          // show the number of markers in the cluster on the icon.
-//          'marker-symbol': cluster.getChildCount(),
-//          'marker-color': '#422'
-//        });
-//      }
-//    });
-//    e.target.eachLayer(function(layer) {
-////      console.log(layer);
-//      clusterGroup.addLayer(layer);
-//    });
-//    map.addLayer(clusterGroup);
-//  });
-//
   locations.eachLayer(function(locale) {
     // Shorten locale.feature.properties to just `prop` so we're not
     // writing this long form over and over again.
@@ -297,36 +270,28 @@
 
     // Each marker on the map.
     var popup = '<h3>' + prop.event_name + '</h3><div>' + prop.date;
-
     var listing = listings.appendChild(document.createElement('div'));
     listing.className = 'item';
-
     var link = listing.appendChild(document.createElement('a'));
     link.href = '#';
     link.className = 'title';
-
     link.innerHTML = prop.event_name;
     link.innerHTML += '<br /><small class="quiet">' + prop.date + '</small>';
-
     link.onclick = function() {
       setActive(listing);
-
       // When a menu item is clicked, animate the map to center
       // its associated locale and open its popup.
       map.setView(locale.getLatLng(), 7);
       locale.openPopup();
       return false;
     };
-
     // Marker interaction
     locale.on('click', function() {
       // 1. center the map on the selected marker.
       map.panTo(locale.getLatLng());
-
       // 2. Set active the markers associated listing.
       setActive(listing);
     });
-
     popup += '</div>';
     locale.bindPopup(popup);
   });
